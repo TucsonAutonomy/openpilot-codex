@@ -260,6 +260,8 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
 
     {"HyundaiCameraSCC", {PERSISTENT, INT, "0"}},
     {"HyundaiCcOnly", {PERSISTENT, INT, "0"}},
+    {"HyundaiCcLeadControl", {PERSISTENT, INT, "0"}},
+    {"HyundaiCcLeadTimeGap", {PERSISTENT, INT, "200"}},
     {"FingerPrints", {PERSISTENT | CLEAR_ON_MANAGER_START, STRING}},
     {"IsLdwsCar", {PERSISTENT, INT, "0"}},
     {"CanfdHDA2", {PERSISTENT, INT, "0"}},

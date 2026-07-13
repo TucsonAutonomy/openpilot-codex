@@ -3,6 +3,7 @@ from opendbc.can import CANPacker
 from opendbc.car import Bus, DT_CTRL, apply_driver_steer_torque_limits, common_fault_avoidance, make_tester_present_msg, structs, apply_std_steer_angle_limits
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.hyundai import hyundaicanfd, hyundaican
+from opendbc.car.hyundai.cc_only_lead import CcOnlyLeadController
 from opendbc.car.hyundai.carstate import CarState
 from opendbc.car.hyundai.hyundaicanfd import CanBus
 from opendbc.car.hyundai.values import HyundaiFlags, Buttons, CarControllerParams, CAR, CAN_GEARS, HyundaiExtFlags
@@ -153,6 +154,8 @@ class CarController(CarControllerBase):
     self.camera_scc_params = Params().get_int("HyundaiCameraSCC")
     self.is_ldws_car = Params().get_bool("IsLdwsCar")
     self.enable_corner_radar = 0
+    self.cc_only_lead_enabled = False
+    self.cc_only_lead_controller = CcOnlyLeadController()
 
     self.steerDeltaUpOrg = self.steerDeltaUp = self.steerDeltaUpLC = self.params.STEER_DELTA_UP
     self.steerDeltaDownOrg = self.steerDeltaDown = self.steerDeltaDownLC = self.params.STEER_DELTA_DOWN
@@ -200,6 +203,8 @@ class CarController(CarControllerBase):
       self.canfd_debug = params.get_int("CanfdDebug")
       self.camera_scc_params = params.get_int("HyundaiCameraSCC")
       self.enable_corner_radar = params.get_int("EnableCornerRadar")
+      self.cc_only_lead_enabled = params.get_bool("HyundaiCcLeadControl")
+      self.cc_only_lead_controller.configure(params.get_int("HyundaiCcLeadTimeGap") * 0.01)
 
     actuators = CC.actuators
     hud_control = CC.hudControl
@@ -479,11 +484,30 @@ class CarController(CarControllerBase):
 
   def create_button_messages(self, CC: structs.CarControl, CS: CarState, use_clu11: bool):
     can_sends = []
+    cc_only_lead_button = Buttons.NONE
+    if use_clu11 and self.CP.flags & HyundaiFlags.CC_ONLY_CAR.value:
+      hud_control = CC.hudControl
+      cc_only_lead_button = self.cc_only_lead_controller.update(
+        enabled=self.cc_only_lead_enabled and CC.enabled,
+        cruise_active=CS.out.cruiseLampOn,
+        v_ego=CS.out.vEgo,
+        lead_visible=hud_control.leadVisible,
+        lead_distance=hud_control.leadDistance,
+        lead_rel_speed=hud_control.leadRelSpeed,
+        brake_pressed=CS.out.brakePressed,
+        gas_pressed=CS.out.gasPressed,
+        brake_hold_active=CS.out.brakeHoldActive,
+        driver_button=CS.cruise_buttons[-1],
+      )
+
     if CS.out.brakePressed or CS.out.brakeHoldActive:
       return can_sends
     if use_clu11:
       if CC.cruiseControl.cancel:
         can_sends.append(hyundaican.create_clu11(self.packer, self.frame, CS.clu11, Buttons.CANCEL, self.CP))
+      elif cc_only_lead_button != Buttons.NONE and CS.clu11 is not None:
+        can_sends.append(hyundaican.create_clu11_button(self.packer, self.frame, CS.clu11, cc_only_lead_button, self.CP))
+        self.last_button_frame = self.frame
       elif False: #CC.cruiseControl.resume:
         # send resume at a max freq of 10Hz
         if (self.frame - self.last_button_frame) * DT_CTRL > 0.1:
@@ -688,4 +712,3 @@ class HyundaiJerk:
         self.jerk_l = min(max(1.0, -self.jerk * 4.0), jerk_max_l)
         self.cb_upper = np.clip(0.9 + accel * 0.2, 0, 1.2)
         self.cb_lower = np.clip(0.8 + accel * 0.2, 0, 1.2)
-
