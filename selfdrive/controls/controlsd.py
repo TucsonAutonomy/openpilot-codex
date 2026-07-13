@@ -229,6 +229,13 @@ class Controls:
 
     hudControl.activeCarrot = self.sm['carrotMan'].activeCarrot
     hudControl.atcDistance = self.sm['carrotMan'].xDistToTurn
+    hudControl.speedCameraTarget = float(self.sm['carrotMan'].ccSpeedCameraTarget * CV.KPH_TO_MS)
+    hudControl.speedCameraDistance = float(self.sm['carrotMan'].xSpdDist)
+    hudControl.speedBumpTarget = float(self.sm['carrotMan'].ccSpeedBumpTarget * CV.KPH_TO_MS)
+    hudControl.speedBumpDistance = float(self.sm['carrotMan'].xSpdDist)
+    hudControl.curveTarget = float(self.sm['carrotMan'].ccCurveTarget * CV.KPH_TO_MS)
+    hudControl.turnTarget = float(self.sm['carrotMan'].ccTurnTarget * CV.KPH_TO_MS)
+    hudControl.turnDistance = float(self.sm['carrotMan'].xDistToTurn)
 
     lp = self.sm['longitudinalPlan']
     if self.CP.pcmCruise:

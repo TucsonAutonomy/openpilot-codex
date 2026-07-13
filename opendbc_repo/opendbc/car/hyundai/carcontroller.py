@@ -155,6 +155,10 @@ class CarController(CarControllerBase):
     self.is_ldws_car = Params().get_bool("IsLdwsCar")
     self.enable_corner_radar = 0
     self.cc_only_lead_enabled = False
+    self.cc_only_speed_camera_enabled = False
+    self.cc_only_speed_bump_enabled = False
+    self.cc_only_curve_enabled = False
+    self.cc_only_turn_enabled = False
     self.cc_only_lead_controller = CcOnlyLeadController()
 
     self.steerDeltaUpOrg = self.steerDeltaUp = self.steerDeltaUpLC = self.params.STEER_DELTA_UP
@@ -204,6 +208,10 @@ class CarController(CarControllerBase):
       self.camera_scc_params = params.get_int("HyundaiCameraSCC")
       self.enable_corner_radar = params.get_int("EnableCornerRadar")
       self.cc_only_lead_enabled = params.get_bool("HyundaiCcLeadControl")
+      self.cc_only_speed_camera_enabled = params.get_bool("HyundaiCcSpeedCameraControl")
+      self.cc_only_speed_bump_enabled = params.get_bool("HyundaiCcSpeedBumpControl")
+      self.cc_only_curve_enabled = params.get_bool("HyundaiCcCurveControl")
+      self.cc_only_turn_enabled = params.get_bool("HyundaiCcTurnControl")
       self.cc_only_lead_controller.configure(params.get_int("HyundaiCcLeadTimeGap") * 0.01)
 
     actuators = CC.actuators
@@ -484,16 +492,30 @@ class CarController(CarControllerBase):
 
   def create_button_messages(self, CC: structs.CarControl, CS: CarState, use_clu11: bool):
     can_sends = []
-    cc_only_lead_button = Buttons.NONE
+    cc_only_assist_button = Buttons.NONE
     if use_clu11 and self.CP.flags & HyundaiFlags.CC_ONLY_CAR.value:
       hud_control = CC.hudControl
-      cc_only_lead_button = self.cc_only_lead_controller.update(
-        enabled=self.cc_only_lead_enabled and CC.enabled,
+      cc_only_assist_button = self.cc_only_lead_controller.update(
+        enabled=(self.cc_only_lead_enabled or self.cc_only_speed_camera_enabled or
+                 self.cc_only_speed_bump_enabled or self.cc_only_curve_enabled or
+                 self.cc_only_turn_enabled) and CC.enabled,
+        lead_enabled=self.cc_only_lead_enabled,
         cruise_active=CS.out.cruiseLampOn,
         v_ego=CS.out.vEgo,
         lead_visible=hud_control.leadVisible,
         lead_distance=hud_control.leadDistance,
         lead_rel_speed=hud_control.leadRelSpeed,
+        speed_camera_target=hud_control.speedCameraTarget,
+        speed_camera_distance=hud_control.speedCameraDistance,
+        speed_bump_target=hud_control.speedBumpTarget,
+        speed_bump_distance=hud_control.speedBumpDistance,
+        curve_target=hud_control.curveTarget,
+        turn_target=hud_control.turnTarget,
+        turn_distance=hud_control.turnDistance,
+        speed_camera_enabled=self.cc_only_speed_camera_enabled,
+        speed_bump_enabled=self.cc_only_speed_bump_enabled,
+        curve_enabled=self.cc_only_curve_enabled,
+        turn_enabled=self.cc_only_turn_enabled,
         brake_pressed=CS.out.brakePressed,
         gas_pressed=CS.out.gasPressed,
         brake_hold_active=CS.out.brakeHoldActive,
@@ -505,8 +527,8 @@ class CarController(CarControllerBase):
     if use_clu11:
       if CC.cruiseControl.cancel:
         can_sends.append(hyundaican.create_clu11(self.packer, self.frame, CS.clu11, Buttons.CANCEL, self.CP))
-      elif cc_only_lead_button != Buttons.NONE and CS.clu11 is not None:
-        can_sends.append(hyundaican.create_clu11_button(self.packer, self.frame, CS.clu11, cc_only_lead_button, self.CP))
+      elif cc_only_assist_button != Buttons.NONE and CS.clu11 is not None:
+        can_sends.append(hyundaican.create_clu11_button(self.packer, self.frame, CS.clu11, cc_only_assist_button, self.CP))
         self.last_button_frame = self.frame
       elif False: #CC.cruiseControl.resume:
         # send resume at a max freq of 10Hz

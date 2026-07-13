@@ -15,11 +15,23 @@ CcOnlyLeadController = cc_only_lead.CcOnlyLeadController
 def update(controller, **kwargs):
   values = {
     "enabled": True,
+    "lead_enabled": True,
     "cruise_active": True,
     "v_ego": 25.0,
     "lead_visible": True,
     "lead_distance": 30.0,
     "lead_rel_speed": -1.0,
+    "speed_camera_target": 250.0 / 3.6,
+    "speed_camera_distance": 0.0,
+    "speed_bump_target": 250.0 / 3.6,
+    "speed_bump_distance": 0.0,
+    "curve_target": 250.0 / 3.6,
+    "turn_target": 250.0 / 3.6,
+    "turn_distance": 0.0,
+    "speed_camera_enabled": False,
+    "speed_bump_enabled": False,
+    "curve_enabled": False,
+    "turn_enabled": False,
     "brake_pressed": False,
     "gas_pressed": False,
     "brake_hold_active": False,
@@ -86,6 +98,83 @@ class TestCcOnlyLeadController(unittest.TestCase):
         self.assertGreater(controller.reduction_steps, 0)
         self.assertEqual(update(controller, **{pedal: True}), CcOnlyButtons.NONE)
         self.assertEqual(controller.reduction_steps, 0)
+
+  def test_each_target_speed_source_can_request_set_decel(self):
+    cases = (
+      ("camera", "speed_camera_target", "speed_camera_enabled"),
+      ("bump", "speed_bump_target", "speed_bump_enabled"),
+      ("curve", "curve_target", "curve_enabled"),
+      ("turn", "turn_target", "turn_enabled"),
+    )
+    for kind, target, toggle in cases:
+      with self.subTest(kind=kind):
+        controller = CcOnlyLeadController()
+        sent = [update(controller, lead_enabled=False, lead_visible=False,
+                       **{target: 70.0 / 3.6, toggle: True}) for _ in range(80)]
+        self.assertIn(CcOnlyButtons.SET_DECEL, sent)
+        self.assertNotIn(CcOnlyButtons.RES_ACCEL, sent)
+
+  def test_disabled_target_speed_source_never_sends(self):
+    controller = CcOnlyLeadController()
+    sent = [update(controller, lead_enabled=False, lead_visible=False,
+                   speed_camera_target=50.0 / 3.6) for _ in range(100)]
+    self.assertEqual(set(sent), {CcOnlyButtons.NONE})
+
+  def test_disabled_lower_target_does_not_mask_enabled_camera(self):
+    controller = CcOnlyLeadController()
+    sent = [update(controller, lead_enabled=False, lead_visible=False,
+                   speed_camera_target=70.0 / 3.6, speed_camera_enabled=True,
+                   curve_target=40.0 / 3.6, curve_enabled=False) for _ in range(80)]
+    self.assertIn(CcOnlyButtons.SET_DECEL, sent)
+    self.assertEqual(controller.speed_kind, "camera")
+
+  def test_target_at_current_speed_does_not_reduce(self):
+    controller = CcOnlyLeadController()
+    sent = [update(controller, lead_enabled=False, lead_visible=False,
+                   speed_camera_target=90.0 / 3.6,
+                   speed_camera_enabled=True) for _ in range(100)]
+    self.assertEqual(set(sent), {CcOnlyButtons.NONE})
+
+  def test_source_switch_preserves_reduction_budget(self):
+    controller = CcOnlyLeadController()
+    for _ in range(80):
+      update(controller, lead_enabled=False, lead_visible=False,
+             speed_camera_target=70.0 / 3.6, speed_camera_enabled=True)
+    reductions = controller.speed_reduction_steps
+    self.assertGreater(reductions, 0)
+
+    update(controller, lead_enabled=False, lead_visible=False,
+           curve_target=60.0 / 3.6, curve_enabled=True)
+    self.assertEqual(controller.speed_kind, "curve")
+    self.assertEqual(controller.speed_reduction_steps, reductions)
+
+  def test_target_speed_clear_never_resumes(self):
+    controller = CcOnlyLeadController()
+    for _ in range(80):
+      update(controller, lead_enabled=False, lead_visible=False,
+             speed_camera_target=70.0 / 3.6,
+             speed_camera_enabled=True)
+    self.assertGreater(controller.speed_reduction_steps, 0)
+
+    sent = [update(controller, lead_enabled=False, lead_visible=False,
+                   speed_camera_target=250.0 / 3.6) for _ in range(300)]
+    self.assertNotIn(CcOnlyButtons.RES_ACCEL, sent)
+    self.assertEqual(controller.speed_reduction_steps, 0)
+
+  def test_late_speed_event_cancels_cruise(self):
+    controller = CcOnlyLeadController()
+    sent = [update(controller, lead_enabled=False, lead_visible=False,
+                   speed_bump_target=60.0 / 3.6, speed_bump_distance=20.0,
+                   speed_bump_enabled=True) for _ in range(30)]
+    self.assertEqual(sent.count(CcOnlyButtons.CANCEL), 1)
+    self.assertTrue(controller.cancel_latched)
+
+  def test_curve_target_never_uses_event_cancel(self):
+    controller = CcOnlyLeadController()
+    sent = [update(controller, lead_enabled=False, lead_visible=False,
+                   curve_target=40.0 / 3.6, curve_enabled=True) for _ in range(80)]
+    self.assertNotIn(CcOnlyButtons.CANCEL, sent)
+    self.assertIn(CcOnlyButtons.SET_DECEL, sent)
 
 
 if __name__ == "__main__":

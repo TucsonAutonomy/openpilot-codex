@@ -968,6 +968,11 @@ class CarrotServ:
       self.atcType = "none"
 
 
+    camera_speed_target = sdi_speed if sdi_speed < 250 and self.xSpdType != 22 else 250
+    bump_speed_target = sdi_speed if sdi_speed < 250 and self.xSpdType == 22 else 250
+    turn_speed_target = min(atc_desired, atc_desired_next)
+    curve_speed_targets = []
+
     speed_n_sources = [
       (atc_desired, "atc"),
       (atc_desired_next, "atc2"),
@@ -975,19 +980,26 @@ class CarrotServ:
       (limit_speed, "road"),
     ]
     if self.turnSpeedControlMode in [1,2]:
-      speed_n_sources.append((max(abs(vturn_speed), self.autoCurveSpeedLowerLimit), "vturn"))
+      vturn_target = max(abs(vturn_speed), self.autoCurveSpeedLowerLimit)
+      speed_n_sources.append((vturn_target, "vturn"))
+      curve_speed_targets.append(vturn_target)
 
     route_speed = max(route_speed * self.mapTurnSpeedFactor, self.autoCurveSpeedLowerLimit)
     if self.turnSpeedControlMode == 2:
       if -500 < self.xDistToTurn < 500:
         speed_n_sources.append((route_speed, "route"))
+        curve_speed_targets.append(route_speed)
     elif self.turnSpeedControlMode in [3, 4]:
       speed_n_sources.append((route_speed, "route"))
+      curve_speed_targets.append(route_speed)
       #speed_n_sources.append((self.calculate_current_speed(dist, speed * self.mapTurnSpeedFactor, 0, 1.2), "route"))
 
     model_turn_speed = max(sm['modelV2'].meta.modelTurnSpeed, self.autoCurveSpeedLowerLimit)
     if model_turn_speed < 200 and abs(vturn_speed) < 120:
       speed_n_sources.append((model_turn_speed, "model"))
+      curve_speed_targets.append(model_turn_speed)
+
+    curve_speed_target = min(curve_speed_targets) if len(curve_speed_targets) > 0 else 250
 
     desired_speed, source = min(speed_n_sources, key=lambda x: x[0])
 
@@ -1063,6 +1075,10 @@ class CarrotServ:
     msg.carrotMan.szTBTMainText = self.szTBTMainText
     msg.carrotMan.desiredSpeed = int(desired_speed)
     msg.carrotMan.desiredSource = source
+    msg.carrotMan.ccSpeedCameraTarget = float(camera_speed_target)
+    msg.carrotMan.ccSpeedBumpTarget = float(bump_speed_target)
+    msg.carrotMan.ccCurveTarget = float(curve_speed_target)
+    msg.carrotMan.ccTurnTarget = float(turn_speed_target)
     msg.carrotMan.carrotCmdIndex = int(self.carrotCmdIndex)
     msg.carrotMan.carrotCmd = self.carrotCmd
     msg.carrotMan.carrotArg = self.carrotArg

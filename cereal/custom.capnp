@@ -41,6 +41,10 @@ struct CarrotMan @0x81c2f05a394cf4af {
 	szSdiDescr @26 : Text;
 	naviPaths @27 : Text;
 	leftSec @28 : Int32;
+	ccSpeedCameraTarget @29 : Float32;
+	ccSpeedBumpTarget @30 : Float32;
+	ccCurveTarget @31 : Float32;
+	ccTurnTarget @32 : Float32;
 }
 
 struct CustomReserved1 @0xaedffd8f31e7b55d {

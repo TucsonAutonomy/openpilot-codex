@@ -451,6 +451,13 @@ struct CarControl {
     leadRadar @15: Int16;
     modelDesire @16: Int16;
     atcDistance @17: Float32;
+    speedCameraTarget @18: Float32;   # m/s; gradual camera/section-control target
+    speedCameraDistance @19: Float32;
+    speedBumpTarget @20: Float32;     # m/s; gradual navigation bump target
+    speedBumpDistance @21: Float32;
+    curveTarget @22: Float32;         # m/s; lowest enabled model/map curve target
+    turnTarget @23: Float32;          # m/s; navigation turn-by-turn target
+    turnDistance @24: Float32;
 
     # not used with the dash, TODO: separate structs for dash UI and device UI
     audibleAlert @5: AudibleAlert;
