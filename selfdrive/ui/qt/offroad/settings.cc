@@ -826,7 +826,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
 
   startToggles->addItem(selectCarBtn);
   startToggles->addItem(new CValueControl("HyundaiCameraSCC", tr("HYUNDAI: CAMERA SCC"), tr("1:Connect the SCC's CAN line to CAM, 2:Sync Cruise state, 3:StockLong"), 0, 3, 1));
-  startToggles->addItem(new CValueControl("HyundaiCcOnly", tr("HYUNDAI: CC ONLY CAR"), tr("Car with basic cruise only (no SCC/radar). 1:lateral(steering) only"), 0, 1, 1));
+  startToggles->addItem(new CValueControl("HyundaiCcOnly", tr("HYUNDAI: CC ONLY CAR"), tr("Car with basic cruise only (no SCC/radar). 1:lateral(steering) only. Tuned for a 2 km/h button step."), 0, 1, 1));
   startToggles->addItem(new CValueControl("HyundaiCcLeadControl", tr("HYUNDAI: CC CAMERA LEAD ASSIST"), tr("Experimental: lowers basic CC with SET- from the camera lead. Cannot brake; critical closing requests CC cancel. Driver uses RES+ to recover speed."), 0, 1, 1));
   startToggles->addItem(new CValueControl("HyundaiCcLeadTimeGap", tr("HYUNDAI: CC LEAD TIME GAP (2.0s)"), tr("Camera lead target time gap in 0.01 seconds. Valid range: 1.50-3.00 seconds."), 150, 300, 10));
   startToggles->addItem(new CValueControl("HyundaiCcSpeedCameraControl", tr("HYUNDAI: CC SPEED CAMERA DECEL"), tr("Experimental: requests SET- for camera targets. A late fast approach may request CC cancel; driver must brake."), 0, 1, 1));

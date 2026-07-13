@@ -1765,17 +1765,17 @@
       "group": "시작",
       "name": "HyundaiCcOnly",
       "title": "HYUNDAI: CC ONLY CAR(0)",
-      "descr": "SCC/레이더 없이 일반 크루즈만 있는 차량.\nON: 횡방향(조향)만 제어, 종방향은 사용 안함",
+      "descr": "SCC/레이더 없이 일반 크루즈만 있는 차량.\nON: 횡방향(조향)만 제어, 종방향은 사용 안함. CC 버튼 1회당 2km/h 차량 기준.",
       "egroup": "START",
       "etitle": "HYUNDAI: CC ONLY CAR(0)",
-      "edescr": "Car with basic cruise control only (no SCC/radar).\nON: lateral (steering) only, no longitudinal",
+      "edescr": "Car with basic cruise control only (no SCC/radar).\nON: lateral (steering) only, no longitudinal. Tuned for a 2 km/h button step.",
       "min": 0,
       "max": 1,
       "default": 0,
       "unit": 1,
       "cgroup": "启动设置",
       "ctitle": "现代: 仅普通巡航车辆 (0)",
-      "cdescr": "仅配备普通巡航(无 SCC/雷达)的车辆。开启: 仅横向(转向)控制, 不使用纵向控制"
+      "cdescr": "仅配备普通巡航(无 SCC/雷达)的车辆。开启: 仅横向(转向)控制, 不使用纵向控制。按键步长按 2km/h 调校。"
     },
     {
       "group": "시작",

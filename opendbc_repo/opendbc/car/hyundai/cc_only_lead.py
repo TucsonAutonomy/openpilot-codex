@@ -17,18 +17,19 @@ class CcOnlyLeadController:
   late speed event requests cruise cancel and is never resumed automatically.
   """
 
+  BUTTON_STEP_KPH = 2.0         # 2017 Tucson conventional CC button step
   LEAD_CONFIRM_FRAMES = 30       # 0.3 s at 100 Hz
   CRITICAL_CONFIRM_FRAMES = 10   # 0.1 s at 100 Hz
-  SET_INTERVAL_FRAMES = 25       # at most 4 SET- taps per second
-  SET_INTERVAL_URGENT_FRAMES = 15
-  MAX_REDUCTION_STEPS = 40
+  SET_INTERVAL_FRAMES = 50       # at most 2 taps/s = 4 km/h/s
+  SET_INTERVAL_URGENT_FRAMES = 25  # at most 4 taps/s = 8 km/h/s
+  MAX_REDUCTION_STEPS = 15       # at most 30 km/h per engagement
   SPEED_CONFIRM_FRAMES = 20
   SPEED_CRITICAL_CONFIRM_FRAMES = 10
-  SPEED_SET_INTERVAL_FRAMES = 50  # at most 2 target-speed SET- taps per second
+  SPEED_SET_INTERVAL_FRAMES = 100  # at most 1 tap/s = 2 km/h/s
   SPEED_MARGIN_KPH = 3.0
   SPEED_CRITICAL_EXCESS_KPH = 15.0
   SPEED_CRITICAL_TTC = 2.0
-  MAX_SPEED_REDUCTION_STEPS = 30
+  MAX_SPEED_REDUCTION_STEPS = 15  # at most 30 km/h per target event
   RECOVERY_CONFIRM_FRAMES = 300       # require 3.0 s of clear conditions
   RECOVERY_INTERVAL_FRAMES = 100      # at most one RES+ tap per second
   RECOVERY_HEADWAY_MARGIN_S = 0.5

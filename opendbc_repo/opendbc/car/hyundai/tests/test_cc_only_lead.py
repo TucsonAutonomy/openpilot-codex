@@ -43,6 +43,31 @@ def update(controller, **kwargs):
 
 
 class TestCcOnlyLeadController(unittest.TestCase):
+  def test_tuning_matches_two_kph_factory_button_step(self):
+    self.assertEqual(CcOnlyLeadController.BUTTON_STEP_KPH, 2.0)
+    self.assertEqual(CcOnlyLeadController.MAX_REDUCTION_STEPS *
+                     CcOnlyLeadController.BUTTON_STEP_KPH, 30.0)
+    self.assertEqual(CcOnlyLeadController.MAX_SPEED_REDUCTION_STEPS *
+                     CcOnlyLeadController.BUTTON_STEP_KPH, 30.0)
+
+  def test_target_speed_reduction_is_limited_to_one_tap_per_second(self):
+    controller = CcOnlyLeadController()
+    sent = [update(controller, lead_enabled=False, lead_visible=False,
+                   speed_camera_target=40.0 / 3.6,
+                   speed_camera_enabled=True) for _ in range(1800)]
+    frames = [frame for frame, button in enumerate(sent) if button == CcOnlyButtons.SET_DECEL]
+    self.assertEqual(len(frames), CcOnlyLeadController.MAX_SPEED_REDUCTION_STEPS)
+    self.assertTrue(all(b - a >= CcOnlyLeadController.SPEED_SET_INTERVAL_FRAMES
+                        for a, b in zip(frames, frames[1:])))
+
+  def test_lead_reduction_uses_two_kph_rate_and_cap(self):
+    controller = CcOnlyLeadController()
+    sent = [update(controller) for _ in range(1200)]
+    frames = [frame for frame, button in enumerate(sent) if button == CcOnlyButtons.SET_DECEL]
+    self.assertEqual(len(frames), CcOnlyLeadController.MAX_REDUCTION_STEPS)
+    self.assertTrue(all(b - a >= CcOnlyLeadController.SET_INTERVAL_FRAMES
+                        for a, b in zip(frames, frames[1:])))
+
   def test_disabled_never_sends_buttons(self):
     controller = CcOnlyLeadController()
     for _ in range(100):
