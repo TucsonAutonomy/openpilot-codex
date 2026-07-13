@@ -833,6 +833,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   startToggles->addItem(new CValueControl("HyundaiCcSpeedBumpControl", tr("HYUNDAI: CC SPEED BUMP DECEL"), tr("Experimental: requests SET- for navigation bumps. Map data may be missing; a late fast approach may request CC cancel. Driver must brake."), 0, 1, 1));
   startToggles->addItem(new CValueControl("HyundaiCcCurveControl", tr("HYUNDAI: CC CURVE DECEL"), tr("Experimental: requests SET- from model/map curve speed. Cannot brake or guarantee a safe curve entry speed."), 0, 1, 1));
   startToggles->addItem(new CValueControl("HyundaiCcTurnControl", tr("HYUNDAI: CC TURN DECEL"), tr("Experimental: requests SET- when approaching a navigation turn. A late fast approach may request CC cancel; driver must brake."), 0, 1, 1));
+  startToggles->addItem(new CValueControl("HyundaiCcAutoResume", tr("HYUNDAI: CC AUTO SPEED RECOVERY"), tr("Experimental: restores only this assist's SET- taps with RES+ after 3 seconds of clear conditions. Never re-engages canceled cruise. Driver remains responsible."), 0, 1, 1));
   startToggles->addItem(new CValueControl("CanfdHDA2", tr("CANFD: HDA2 mode"), tr("1:HDA2,2:HDA2+BSM"), 0, 2, 1));
   startToggles->addItem(new CValueControl("EnableRadarTracks", tr("Enable Radar Track"), tr("1:Enable RadarTrack, -1,2:Disable use HKG SCC radar at all times"), -1, 3, 1));
   startToggles->addItem(new CValueControl("AutoCruiseControl", tr("Auto Cruise control"), tr("Softhold, Auto Cruise ON/OFF control"), 0, 3, 1));

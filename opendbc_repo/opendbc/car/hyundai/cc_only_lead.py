@@ -12,8 +12,8 @@ class CcOnlyLeadController:
   """Vision-lead and target-speed assist for conventional cruise control.
 
   This controller cannot command throttle or brakes. It only sends conservative
-  SET- button taps. Since a CC-only car does not report its current set speed,
-  this controller never sends RES+ automatically. A critical closing lead or
+  SET- button taps. Optional recovery only restores SET- taps sent by this
+  controller while factory cruise remains active. A critical closing lead or
   late speed event requests cruise cancel and is never resumed automatically.
   """
 
@@ -29,6 +29,11 @@ class CcOnlyLeadController:
   SPEED_CRITICAL_EXCESS_KPH = 15.0
   SPEED_CRITICAL_TTC = 2.0
   MAX_SPEED_REDUCTION_STEPS = 30
+  RECOVERY_CONFIRM_FRAMES = 300       # require 3.0 s of clear conditions
+  RECOVERY_INTERVAL_FRAMES = 100      # at most one RES+ tap per second
+  RECOVERY_HEADWAY_MARGIN_S = 0.5
+  RECOVERY_MIN_REL_SPEED = -0.3
+  MAX_RECOVERY_STEPS = 30
 
   def __init__(self, time_gap_s: float = 2.0, min_speed_kph: float = 30.0):
     self.time_gap_s = time_gap_s
@@ -43,6 +48,8 @@ class CcOnlyLeadController:
     self.speed_kind = ""
     self.speed_frames = 0
     self.speed_reduction_steps = 0
+    self.recovery_frames = 0
+    self.recovery_steps = 0
     self.cancel_latched = False
 
   def configure(self, time_gap_s: float) -> None:
@@ -55,12 +62,21 @@ class CcOnlyLeadController:
     self.filtered_rel_speed = 0.0
     self.reduction_steps = 0
     self._reset_speed_event()
+    self._reset_recovery()
     self.cancel_latched = False
 
   def _reset_speed_event(self) -> None:
     self.speed_kind = ""
     self.speed_frames = 0
     self.speed_reduction_steps = 0
+
+  def _reset_recovery(self) -> None:
+    self.recovery_frames = 0
+    self.recovery_steps = 0
+
+  def _record_reduction(self) -> None:
+    self.recovery_frames = 0
+    self.recovery_steps = min(self.recovery_steps + 1, self.MAX_RECOVERY_STEPS)
 
   def _valid_speed_target(self, target_speed: float) -> bool:
     return math.isfinite(target_speed) and 20.0 <= target_speed * 3.6 <= 160.0
@@ -74,7 +90,7 @@ class CcOnlyLeadController:
              speed_bump_target: float, speed_bump_distance: float,
              curve_target: float, turn_target: float, turn_distance: float,
              speed_camera_enabled: bool, speed_bump_enabled: bool,
-             curve_enabled: bool, turn_enabled: bool,
+             curve_enabled: bool, turn_enabled: bool, auto_resume_enabled: bool,
              brake_pressed: bool, gas_pressed: bool, brake_hold_active: bool,
              driver_button: int) -> int:
     self.frame += 1
@@ -89,6 +105,7 @@ class CcOnlyLeadController:
       self.lead_frames = 0
       self.no_lead_frames = 0
       self._reset_speed_event()
+      self._reset_recovery()
       self.last_button_frame = self.frame
       return CcOnlyButtons.NONE
 
@@ -100,7 +117,11 @@ class CcOnlyLeadController:
     if v_ego * 3.6 < self.min_speed_kph:
       self.lead_frames = 0
       self._reset_speed_event()
+      self._reset_recovery()
       return CcOnlyButtons.NONE
+
+    if not auto_resume_enabled:
+      self._reset_recovery()
 
     lead_valid = lead_enabled and self._valid_lead(lead_visible, lead_distance, lead_rel_speed)
     if lead_valid:
@@ -152,6 +173,7 @@ class CcOnlyLeadController:
       if self.lead_frames >= self.CRITICAL_CONFIRM_FRAMES and critical:
         self.cancel_latched = True
         self.reduction_steps = 0
+        self._reset_recovery()
         self.last_button_frame = self.frame
         return CcOnlyButtons.CANCEL
 
@@ -165,6 +187,7 @@ class CcOnlyLeadController:
       if self.speed_frames >= self.SPEED_CRITICAL_CONFIRM_FRAMES and critical_event:
         self.cancel_latched = True
         self.speed_reduction_steps = 0
+        self._reset_recovery()
         self.last_button_frame = self.frame
         return CcOnlyButtons.CANCEL
 
@@ -182,6 +205,8 @@ class CcOnlyLeadController:
           self.reduction_steps < self.MAX_REDUCTION_STEPS and
           self.frame - self.last_button_frame >= interval):
         self.reduction_steps += 1
+        if auto_resume_enabled:
+          self._record_reduction()
         self.last_button_frame = self.frame
         return CcOnlyButtons.SET_DECEL
 
@@ -192,7 +217,29 @@ class CcOnlyLeadController:
           self.speed_reduction_steps < self.MAX_SPEED_REDUCTION_STEPS and
           self.frame - self.last_button_frame >= self.SPEED_SET_INTERVAL_FRAMES):
         self.speed_reduction_steps += 1
+        if auto_resume_enabled:
+          self._record_reduction()
         self.last_button_frame = self.frame
         return CcOnlyButtons.SET_DECEL
+
+    lead_allows_recovery = not lead_enabled or not lead_visible
+    if lead_valid:
+      headway = self.filtered_distance / max(v_ego, 0.1)
+      lead_allows_recovery = (headway >= self.time_gap_s + self.RECOVERY_HEADWAY_MARGIN_S and
+                              self.filtered_rel_speed >= self.RECOVERY_MIN_REL_SPEED)
+
+    recovery_allowed = (auto_resume_enabled and self.recovery_steps > 0 and
+                        not speed_target_valid and lead_allows_recovery)
+    if recovery_allowed:
+      self.recovery_frames += 1
+      if (self.recovery_frames >= self.RECOVERY_CONFIRM_FRAMES and
+          self.frame - self.last_button_frame >= self.RECOVERY_INTERVAL_FRAMES):
+        self.recovery_steps -= 1
+        self.last_button_frame = self.frame
+        if self.recovery_steps == 0:
+          self.recovery_frames = 0
+        return CcOnlyButtons.RES_ACCEL
+    else:
+      self.recovery_frames = 0
 
     return CcOnlyButtons.NONE

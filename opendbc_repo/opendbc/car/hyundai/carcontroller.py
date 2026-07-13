@@ -159,6 +159,7 @@ class CarController(CarControllerBase):
     self.cc_only_speed_bump_enabled = False
     self.cc_only_curve_enabled = False
     self.cc_only_turn_enabled = False
+    self.cc_only_auto_resume_enabled = False
     self.cc_only_lead_controller = CcOnlyLeadController()
 
     self.steerDeltaUpOrg = self.steerDeltaUp = self.steerDeltaUpLC = self.params.STEER_DELTA_UP
@@ -212,6 +213,7 @@ class CarController(CarControllerBase):
       self.cc_only_speed_bump_enabled = params.get_bool("HyundaiCcSpeedBumpControl")
       self.cc_only_curve_enabled = params.get_bool("HyundaiCcCurveControl")
       self.cc_only_turn_enabled = params.get_bool("HyundaiCcTurnControl")
+      self.cc_only_auto_resume_enabled = params.get_bool("HyundaiCcAutoResume")
       self.cc_only_lead_controller.configure(params.get_int("HyundaiCcLeadTimeGap") * 0.01)
 
     actuators = CC.actuators
@@ -516,6 +518,7 @@ class CarController(CarControllerBase):
         speed_bump_enabled=self.cc_only_speed_bump_enabled,
         curve_enabled=self.cc_only_curve_enabled,
         turn_enabled=self.cc_only_turn_enabled,
+        auto_resume_enabled=self.cc_only_auto_resume_enabled,
         brake_pressed=CS.out.brakePressed,
         gas_pressed=CS.out.gasPressed,
         brake_hold_active=CS.out.brakeHoldActive,

@@ -1875,6 +1875,22 @@
     },
     {
       "group": "시작",
+      "name": "HyundaiCcAutoResume",
+      "title": "HYUNDAI: CC 자동 속도 복구(0)",
+      "descr": "실험 기능. 감속 조건이 3초간 해제되면 이 보조가 보낸 SET- 횟수만큼만 RES+로 복구합니다. 취소된 CC를 다시 켜지 않으며 운전자가 항상 책임져야 합니다.",
+      "egroup": "START",
+      "etitle": "HYUNDAI: CC AUTO SPEED RECOVERY(0)",
+      "edescr": "Experimental. After 3 clear seconds, restores only this assist's SET- taps with RES+. Never re-engages canceled cruise. Driver remains responsible.",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "unit": 1,
+      "cgroup": "启动设置",
+      "ctitle": "现代: 普通巡航自动恢复速度 (0)",
+      "cdescr": "实验功能。条件连续安全 3 秒后，仅按本辅助发送的 SET- 次数使用 RES+ 恢复。不会重新接合已取消的巡航，驾驶员始终负责。"
+    },
+    {
+      "group": "시작",
       "name": "IsLdwsCar",
       "title": "HYUNDAI: LDWS ONLY CAR(0)",
       "descr": "LDWS ONLY CAR는 ON",

@@ -32,6 +32,7 @@ def update(controller, **kwargs):
     "speed_bump_enabled": False,
     "curve_enabled": False,
     "turn_enabled": False,
+    "auto_resume_enabled": False,
     "brake_pressed": False,
     "gas_pressed": False,
     "brake_hold_active": False,
@@ -160,6 +161,83 @@ class TestCcOnlyLeadController(unittest.TestCase):
                    speed_camera_target=250.0 / 3.6) for _ in range(300)]
     self.assertNotIn(CcOnlyButtons.RES_ACCEL, sent)
     self.assertEqual(controller.speed_reduction_steps, 0)
+
+  def test_auto_resume_restores_only_recorded_target_reductions(self):
+    controller = CcOnlyLeadController()
+    sent = [update(controller, lead_enabled=False, lead_visible=False,
+                   speed_camera_target=70.0 / 3.6, speed_camera_enabled=True,
+                   auto_resume_enabled=True) for _ in range(180)]
+    reduction_count = sent.count(CcOnlyButtons.SET_DECEL)
+    self.assertGreater(reduction_count, 0)
+    self.assertEqual(controller.recovery_steps, reduction_count)
+
+    before_delay = [update(controller, lead_enabled=False, lead_visible=False,
+                           speed_camera_enabled=True, auto_resume_enabled=True) for _ in range(299)]
+    self.assertNotIn(CcOnlyButtons.RES_ACCEL, before_delay)
+
+    recovery = [update(controller, lead_enabled=False, lead_visible=False,
+                       speed_camera_enabled=True, auto_resume_enabled=True) for _ in range(500)]
+    self.assertEqual(recovery.count(CcOnlyButtons.RES_ACCEL), reduction_count)
+    self.assertEqual(controller.recovery_steps, 0)
+
+  def test_auto_resume_can_recover_after_lead_clears(self):
+    controller = CcOnlyLeadController()
+    reduced = [update(controller, auto_resume_enabled=True) for _ in range(80)]
+    reduction_count = reduced.count(CcOnlyButtons.SET_DECEL)
+    self.assertGreater(reduction_count, 0)
+
+    recovery = [update(controller, lead_visible=False,
+                       auto_resume_enabled=True) for _ in range(500)]
+    self.assertEqual(recovery.count(CcOnlyButtons.RES_ACCEL), reduction_count)
+    self.assertEqual(controller.recovery_steps, 0)
+
+  def test_auto_resume_waits_while_lead_is_unsafe(self):
+    controller = CcOnlyLeadController()
+    for _ in range(80):
+      update(controller, auto_resume_enabled=True)
+    self.assertGreater(controller.recovery_steps, 0)
+
+    sent = [update(controller, lead_distance=35.0, lead_rel_speed=-1.0,
+                   auto_resume_enabled=True) for _ in range(500)]
+    self.assertNotIn(CcOnlyButtons.RES_ACCEL, sent)
+
+  def test_critical_cancel_discards_auto_resume_budget(self):
+    controller = CcOnlyLeadController()
+    for _ in range(80):
+      update(controller, auto_resume_enabled=True)
+    self.assertGreater(controller.recovery_steps, 0)
+
+    sent = [update(controller, lead_distance=18.0, lead_rel_speed=-8.0,
+                   auto_resume_enabled=True) for _ in range(30)]
+    self.assertEqual(sent.count(CcOnlyButtons.CANCEL), 1)
+    self.assertEqual(controller.recovery_steps, 0)
+    self.assertNotIn(CcOnlyButtons.RES_ACCEL, sent)
+
+  def test_driver_input_discards_auto_resume_budget(self):
+    controller = CcOnlyLeadController()
+    for _ in range(80):
+      update(controller, auto_resume_enabled=True)
+    self.assertGreater(controller.recovery_steps, 0)
+
+    update(controller, driver_button=CcOnlyButtons.SET_DECEL,
+           auto_resume_enabled=True)
+    self.assertEqual(controller.recovery_steps, 0)
+    sent = [update(controller, lead_visible=False,
+                   auto_resume_enabled=True) for _ in range(500)]
+    self.assertNotIn(CcOnlyButtons.RES_ACCEL, sent)
+
+  def test_cruise_off_discards_budget_and_never_reengages(self):
+    controller = CcOnlyLeadController()
+    for _ in range(80):
+      update(controller, auto_resume_enabled=True)
+    self.assertGreater(controller.recovery_steps, 0)
+
+    self.assertEqual(update(controller, cruise_active=False,
+                            auto_resume_enabled=True), CcOnlyButtons.NONE)
+    self.assertEqual(controller.recovery_steps, 0)
+    sent = [update(controller, lead_visible=False,
+                   auto_resume_enabled=True) for _ in range(500)]
+    self.assertNotIn(CcOnlyButtons.RES_ACCEL, sent)
 
   def test_late_speed_event_cancels_cruise(self):
     controller = CcOnlyLeadController()
